@@ -46,6 +46,20 @@ jobs:
         with:
           ps2dev: C:\ps2dev-consumer
 
+      # Real bug found by actually watching this build run, not caught
+      # locally: examples/CMakeLists.txt's tricked_out example calls
+      # `dvp-as` unconditionally (not gated behind the VU1_TOOLS_AVAILABLE
+      # check the main renderer loop uses, which falls back gracefully
+      # to pre-built .vo objects when openvcl/masp aren't found) - it
+      # fails outright if dvp-as isn't already on PATH. setup-sdk
+      # installs dvp/bin but never adds it to PATH itself (ps2build's
+      # own toolchain resolution never needs PATH, so there was nothing
+      # to fix there) - this workflow builds via raw CMake/ninja instead,
+      # which does rely on PATH for a bare `COMMAND dvp-as`.
+      - name: Add dvp\bin to PATH
+        shell: pwsh
+        run: "'C:\\ps2dev-consumer\\dvp\\bin' >> $env:GITHUB_PATH"
+
       # ps2build update installs ps2dev.cmake itself, into
       # C:\ps2dev-consumer\share\ - both CMakeLists.txt below already
       # default CMAKE_TOOLCHAIN_FILE to $ENV{PS2DEV}/share/ps2dev.cmake,
