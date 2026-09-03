@@ -12,17 +12,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Checkout sdk-dist (source, for share/ps2dev.cmake)
+      # `path: ../x` is rejected by this runner's own action sandboxing
+      # ("Repository path ... is not under ... hostexecutor") - both
+      # checkouts below nest inside the checkout instead of landing as
+      # true siblings (fine here: every reference is contained within
+      # this workflow file). See build.yml's own comment on this.
+      - name: Checkout cmake-toolchain (source, for ps2dev.cmake)
         uses: actions/checkout@v4
         with:
-          repository: ps2/sdk-dist
-          path: ../sdk-dist
+          repository: ps2/cmake-toolchain
+          path: cmake-toolchain
 
       - name: Checkout ps2stuff (build dependency)
         uses: actions/checkout@v4
         with:
           repository: ps2/ps2stuff
-          path: ../ps2stuff
+          path: ps2stuff
 
       - name: Clean C:\ps2dev-consumer
         shell: pwsh
@@ -35,17 +40,19 @@ jobs:
       - name: Build + install ps2stuff
         shell: pwsh
         run: |
-          cmake -S ..\ps2stuff -B ..\ps2stuff\build -G Ninja `
-            -DCMAKE_TOOLCHAIN_FILE=../sdk-dist/share/ps2dev.cmake `
+          $env:PS2DEV = "C:\ps2dev-consumer"
+          cmake -S ps2stuff -B ps2stuff\build -G Ninja `
+            -DCMAKE_TOOLCHAIN_FILE=cmake-toolchain/ps2dev.cmake `
             -DCMAKE_INSTALL_PREFIX=C:\ps2dev-consumer\packages\world\ps2stuff
-          cmake --build ..\ps2stuff\build
-          cmake --install ..\ps2stuff\build
+          cmake --build ps2stuff\build
+          cmake --install ps2stuff\build
 
       - name: Configure with CMake
         shell: pwsh
         run: |
+          $env:PS2DEV = "C:\ps2dev-consumer"
           cmake -S . -B build -G Ninja `
-            -DCMAKE_TOOLCHAIN_FILE=../sdk-dist/share/ps2dev.cmake `
+            -DCMAKE_TOOLCHAIN_FILE=cmake-toolchain/ps2dev.cmake `
             -DCMAKE_INSTALL_PREFIX=C:\ps2dev-consumer\packages\world\ps2gl `
             -DBUILD_GLUT=ON -DBUILD_EXAMPLES=OFF
 

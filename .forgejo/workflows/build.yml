@@ -10,14 +10,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # sdk-dist isn't installed by setup-sdk - checked out purely as a
-      # source for share/ps2dev.cmake, the CMake toolchain file this repo
-      # (and ps2stuff below) build against.
-      - name: Checkout sdk-dist (source, for share/ps2dev.cmake)
+      # `path: ../x` is rejected by this runner's own action sandboxing
+      # ("Repository path ... is not under ... hostexecutor") - both
+      # checkouts below nest inside the checkout instead of landing as
+      # true siblings; every reference to them is fully contained
+      # within this workflow file, so that's fine here (unlike
+      # sdk-world's own sdk-core checkout, whose hardcoded ps2.yaml-
+      # level ../../sdk-core paths need a true sibling).
+      - name: Checkout cmake-toolchain (source, for ps2dev.cmake)
         uses: actions/checkout@v4
         with:
-          repository: ps2/sdk-dist
-          path: ../sdk-dist
+          repository: ps2/cmake-toolchain
+          path: cmake-toolchain
 
       # ps2gl links against ps2stuff (ps2s/*.h, libps2stuff.a) - not yet
       # a released, ps2build-installable package in its own right (see
@@ -31,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ps2/ps2stuff
-          path: ../ps2stuff
+          path: ps2stuff
 
       - name: Clean C:\ps2dev-consumer
         shell: pwsh
@@ -44,17 +48,19 @@ jobs:
       - name: Build + install ps2stuff
         shell: pwsh
         run: |
-          cmake -S ..\ps2stuff -B ..\ps2stuff\build -G Ninja `
-            -DCMAKE_TOOLCHAIN_FILE=../sdk-dist/share/ps2dev.cmake `
+          $env:PS2DEV = "C:\ps2dev-consumer"
+          cmake -S ps2stuff -B ps2stuff\build -G Ninja `
+            -DCMAKE_TOOLCHAIN_FILE=cmake-toolchain/ps2dev.cmake `
             -DCMAKE_INSTALL_PREFIX=C:\ps2dev-consumer\packages\world\ps2stuff
-          cmake --build ..\ps2stuff\build
-          cmake --install ..\ps2stuff\build
+          cmake --build ps2stuff\build
+          cmake --install ps2stuff\build
 
       - name: Configure with CMake
         shell: pwsh
         run: |
+          $env:PS2DEV = "C:\ps2dev-consumer"
           cmake -S . -B build -G Ninja `
-            -DCMAKE_TOOLCHAIN_FILE=../sdk-dist/share/ps2dev.cmake `
+            -DCMAKE_TOOLCHAIN_FILE=cmake-toolchain/ps2dev.cmake `
             -DCMAKE_INSTALL_PREFIX=C:\ps2dev-consumer\packages\world\ps2gl `
             -DBUILD_GLUT=ON -DBUILD_EXAMPLES=ON
 
