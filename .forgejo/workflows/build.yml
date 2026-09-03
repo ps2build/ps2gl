@@ -80,6 +80,16 @@ jobs:
         shell: pwsh
         run: "'sha8=' + $env:GITHUB_SHA.Substring(0,8) >> $env:GITHUB_OUTPUT"
 
+      # The installed package directory (include/, lib/, package.yaml) -
+      # same reasoning as ps2stuff's own build.yml: a real, complete
+      # package someone could drop into $PS2DEV/packages/world/, not
+      # just a bare .a.
+      - uses: actions/upload-artifact@v3
+        if: success()
+        with:
+          name: ps2gl-${{ steps.slug.outputs.sha8 }}
+          path: C:\ps2dev-consumer\packages\world\ps2gl
+
       - uses: actions/upload-artifact@v3
         if: success()
         with:
