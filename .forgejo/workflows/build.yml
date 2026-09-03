@@ -80,7 +80,7 @@ jobs:
         shell: pwsh
         run: "'sha8=' + $env:GITHUB_SHA.Substring(0,8) >> $env:GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3
         if: success()
         with:
           name: ps2gl-examples-${{ steps.slug.outputs.sha8 }}
