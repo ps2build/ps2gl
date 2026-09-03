@@ -73,13 +73,27 @@ jobs:
           cmake --build ps2stuff\build
           cmake --install ps2stuff\build
 
+      # BUILD_EXAMPLES=OFF, matching release.yml: real bug found by
+      # actually watching this build link, not guessed. Every VU1
+      # renderer's microcode needs openvcl/masp (the VCL compiler) to
+      # build - neither ships in the published toolchain release (a
+      # real, separately known gap - see FEEDBACK.md), and this repo
+      # has no pre-built .vo fallback objects checked in either
+      # (vu1/*.vo is empty; only Sony's own reference .vsm sources
+      # exist, which still need dvp-as to assemble and only cover the
+      # SCE-VSM-bypass path, off by default). The library itself
+      # (libps2gl.a/libps2glut.a) builds fine either way - only linking
+      # an actual example against a real renderer fails
+      # ("undefined reference to vsmGeneralPVDiff_CodeStart"), since
+      # nothing ever produced that symbol. Revisit once openvcl/masp
+      # are real toolchain-release components.
       - name: Configure with CMake
         shell: pwsh
         run: |
           $env:PS2DEV = "C:\ps2dev-consumer"
           cmake -S . -B build -G Ninja `
             -DCMAKE_INSTALL_PREFIX=C:\ps2dev-consumer\packages\world\ps2gl `
-            -DBUILD_GLUT=ON -DBUILD_EXAMPLES=ON
+            -DBUILD_GLUT=ON -DBUILD_EXAMPLES=OFF
 
       - name: Build
         shell: pwsh
@@ -103,13 +117,3 @@ jobs:
         with:
           name: ps2gl-${{ steps.slug.outputs.sha8 }}
           path: C:\ps2dev-consumer\packages\world\ps2gl
-
-      - uses: actions/upload-artifact@v3
-        if: success()
-        with:
-          name: ps2gl-examples-${{ steps.slug.outputs.sha8 }}
-          path: |
-            build/examples/*.elf
-            build/examples/*.gl
-            build/examples/*.rtx
-            build/examples/*.bin
