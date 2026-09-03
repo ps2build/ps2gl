@@ -9,7 +9,6 @@ target_include_directories(shared_code PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/shared_code
     ${CMAKE_SOURCE_DIR}/glut/include
     ${CMAKE_SOURCE_DIR}/include
-    ${PS2SDK}/ports/include
 )
 
 target_compile_options(shared_code PRIVATE
@@ -30,8 +29,7 @@ function(add_ps2gl_example EXAMPLE_NAME SOURCE_FILE)
         ${CMAKE_SOURCE_DIR}/glut/include
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/shared_code
-        ${PS2SDK}/ports/include
-    )
+        )
 
     target_compile_options(${EXAMPLE_NAME} PRIVATE
         -Wno-strict-aliasing
@@ -41,10 +39,6 @@ function(add_ps2gl_example EXAMPLE_NAME SOURCE_FILE)
     target_compile_definitions(${EXAMPLE_NAME} PRIVATE
         NO_VU0_VECTORS
         NO_ASM
-    )
-
-    target_link_directories(${EXAMPLE_NAME} PRIVATE
-        ${PS2SDK}/ports/lib
     )
 
     target_link_libraries(${EXAMPLE_NAME}
@@ -122,7 +116,6 @@ target_include_directories(tricked_out PRIVATE
     ${CMAKE_SOURCE_DIR}/src       # For ps2gl internal headers
     ${CMAKE_CURRENT_SOURCE_DIR}/shared_code
     ${CMAKE_CURRENT_SOURCE_DIR}/tricked_out
-    ${PS2SDK}/ports/include
 )
 
 target_compile_options(tricked_out PRIVATE
@@ -133,10 +126,6 @@ target_compile_options(tricked_out PRIVATE
 target_compile_definitions(tricked_out PRIVATE
     NO_VU0_VECTORS
     NO_ASM
-)
-
-target_link_directories(tricked_out PRIVATE
-    ${PS2SDK}/ports/lib
 )
 
 # Link the billboard VU1 object file

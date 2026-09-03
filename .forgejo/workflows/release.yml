@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout sdk-dist (source, for share/ps2dev.cmake)
+        uses: actions/checkout@v4
+        with:
+          repository: ps2/sdk-dist
+          path: ../sdk-dist
+
+      - name: Checkout ps2stuff (build dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: ps2/ps2stuff
+          path: ../ps2stuff
+
+      - name: Clean C:\ps2dev-consumer
+        shell: pwsh
+        run: Remove-Item -Recurse -Force C:\ps2dev-consumer -ErrorAction SilentlyContinue
+
+      - uses: https://git.techwritescode.dev/ps2/setup-sdk@master
+        with:
+          ps2dev: C:\ps2dev-consumer
+
+      - name: Build + install ps2stuff
+        shell: pwsh
+        run: |
+          cmake -S ..\ps2stuff -B ..\ps2stuff\build -G Ninja `
+            -DCMAKE_TOOLCHAIN_FILE=../sdk-dist/share/ps2dev.cmake `
+            -DCMAKE_INSTALL_PREFIX=C:\ps2dev-consumer\packages\world\ps2stuff
+          cmake --build ..\ps2stuff\build
+          cmake --install ..\ps2stuff\build
+
+      - name: Configure with CMake
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_TOOLCHAIN_FILE=../sdk-dist/share/ps2dev.cmake `
+            -DCMAKE_INSTALL_PREFIX=C:\ps2dev-consumer\packages\world\ps2gl `
+            -DBUILD_GLUT=ON -DBUILD_EXAMPLES=OFF
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build
+
+      - name: Install libraries
+        shell: pwsh
+        run: cmake --install build
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          Compress-Archive -Path C:\ps2dev-consumer\packages\world\ps2gl\* -DestinationPath "ps2gl-$version-windows-x64.zip"
+
+      # Assumes fj is installed and already authenticated on the runner.
+      - name: Publish release
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          fj release create $version -t $version -a "ps2gl-$version-windows-x64.zip" -r ps2/ps2gl
+
+      - name: Clean up
+        if: always()
+        shell: pwsh
+        run: |
+          Remove-Item -Force "ps2gl-*-windows-x64.zip" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue

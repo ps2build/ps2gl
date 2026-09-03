@@ -6,15 +6,10 @@ project(ps2glut VERSION 1.0.0 LANGUAGES CXX C)
 # Set output library name
 set(EE_LIB "libps2glut.a")
 
-# Include directories
+# Include directories - dependencies (ps2stuff, core/common, etc.) are
+# already on every EE target's default flags via the toolchain file.
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${PS2SDK}/ports/include
-)
-
-# Link directories
-link_directories(
-    ${PS2SDK}/ports/lib
 )
 
 # Compiler flags
@@ -81,5 +76,5 @@ message(STATUS "ps2glut configuration:")
 message(STATUS "  Version: ${PROJECT_VERSION}")
 message(STATUS "  Debug build: ${DEBUG}")
 message(STATUS "  Output library: ${EE_LIB}")
-message(STATUS "  Install prefix: ${PS2SDK}/ports")
+message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "")

@@ -17,24 +17,19 @@ option(BUILD_GLUT "Build GLUT library" ON)
 option(BUILD_EXAMPLES "Build example programs" OFF)
 option(DEBUG "Enable debug build" OFF)
 
-# Check if PS2SDK is set (should be done by toolchain file)
-if(NOT DEFINED PS2SDK)
-    message(FATAL_ERROR "PS2SDK is not defined. Make sure the toolchain file is loaded correctly.")
-endif()
-
 # Set output library name
 set(EE_LIB "libps2gl.a")
 
-# Include directories
+# Include directories - just this project's own headers. Every real
+# dependency (ps2stuff's ps2s/*.h, core/common's tamtypes.h, and any
+# other packages/{core,world}/*/include) is already on the default
+# compile flags the toolchain file (ps2dev.cmake) sets up for every EE
+# target - no PS2SDK-specific include_directories()/link_directories()
+# needed here (ps2dev.cmake used to define a PS2SDK variable pointing
+# at a flat legacy tree that doesn't exist post-migration).
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/vu1
-    ${PS2SDK}/ports/include
-)
-
-# Link directories
-link_directories(
-    ${PS2SDK}/ports/lib
 )
 
 # Compiler flags
