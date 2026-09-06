@@ -60,18 +60,18 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ github.ref_name }}"
-          Compress-Archive -Path C:\ps2dev-consumer\packages\world\ps2gl\* -DestinationPath "ps2gl-$version-windows-x64.zip"
+          Compress-Archive -Path C:\ps2dev-consumer\packages\world\ps2gl\* -DestinationPath "ps2gl-$version-windows-amd64.zip"
 
       # Assumes fj is installed and already authenticated on the runner.
       - name: Publish release
         shell: pwsh
         run: |
           $version = "${{ github.ref_name }}"
-          fj release create $version -t $version -a "ps2gl-$version-windows-x64.zip" -r ps2/ps2gl
+          fj release create $version -t $version -a "ps2gl-$version-windows-amd64.zip" -r ps2/ps2gl
 
       - name: Clean up
         if: always()
         shell: pwsh
         run: |
-          Remove-Item -Force "ps2gl-*-windows-x64.zip" -ErrorAction SilentlyContinue
+          Remove-Item -Force "ps2gl-*-windows-amd64.zip" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
