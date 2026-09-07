@@ -61,8 +61,8 @@ jobs:
         run: "'C:\\ps2dev-consumer\\dvp\\bin' >> $env:GITHUB_PATH"
 
       # ps2build update installs ps2dev.cmake itself, into
-      # C:\ps2dev-consumer\share\ - both CMakeLists.txt below already
-      # default CMAKE_TOOLCHAIN_FILE to $ENV{PS2DEV}/share/ps2dev.cmake,
+      # C:\ps2dev-consumer\cmake\ - both CMakeLists.txt below already
+      # default CMAKE_TOOLCHAIN_FILE to $ENV{PS2DEV}/cmake/ps2dev.cmake,
       # so setting PS2DEV is all this needs.
       - name: Build + install ps2stuff
         shell: pwsh
