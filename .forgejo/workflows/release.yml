@@ -77,5 +77,5 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          Remove-Item -Force "ps2gl-*-windows-amd64.zip" -ErrorAction SilentlyContinue
+          Remove-Item -Force "ps2gl-*.zip" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
