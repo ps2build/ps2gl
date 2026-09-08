@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows
+    runs-on: docker
     steps:
       - uses: actions/checkout@v4
 
@@ -14,23 +14,13 @@ jobs:
       # a released, ps2build-installable package in its own right (see
       # FEEDBACK.md's aftermarket-distribution notes), so it's built
       # from source here first and installed into the same
-      # packages/world tree ps2dev.cmake already globs -I/-L from,
-      # exactly mirroring how the old GitHub Actions workflow cloned and
-      # built ps2stuff as a build-time step before configuring ps2gl
-      # itself. `path: ps2stuff` (not ../ps2stuff): actions/checkout's
-      # path: ../x is rejected by this runner's own action sandboxing
-      # ("Repository path ... is not under ... hostexecutor") - nesting
-      # inside the checkout is fine here, since every reference to it
-      # is fully contained within this workflow file (unlike
-      # sdk-world's own sdk-core checkout, whose hardcoded ps2.yaml-
-      # level ../../sdk-core paths need a true sibling).
+      # packages/world tree ps2dev.cmake already globs -I/-L from.
+      # `path: ps2stuff` (not ../ps2stuff): actions/checkout's
+      # path: ../x is rejected by this runner's own action sandboxing.
       # ref: master, not left to auto-detect - a real, separately
-      # confirmed actions/checkout bug on this runner: with no ref:
-      # given, its own default-branch lookup fails ("The target
-      # couldn't be found.") for any cross-repo checkout regardless of
-      # path, even against a long-established repo (confirmed against
-      # sdk-core in sdk-world's own CI). Passing ref: explicitly skips
-      # that lookup entirely.
+      # confirmed actions/checkout bug on this host: with no ref:
+      # given, its own default-branch lookup fails for a cross-repo
+      # checkout. Passing ref: explicitly skips that lookup entirely.
       - name: Checkout ps2stuff (build dependency)
         uses: actions/checkout@v4
         with:
@@ -38,13 +28,13 @@ jobs:
           ref: master
           path: ps2stuff
 
-      - name: Clean C:\ps2dev-consumer
-        shell: pwsh
-        run: Remove-Item -Recurse -Force C:\ps2dev-consumer -ErrorAction SilentlyContinue
+      - name: Setup cmake
+        uses: https://git.techwritescode.dev/techwritescode/setup-cmake@master
 
       - uses: https://git.techwritescode.dev/ps2/setup-sdk@master
         with:
-          ps2dev: C:\ps2dev-consumer
+          ps2dev: /opt/ps2dev
+          components: toolchain,cmake,ninja,sdk-core
 
       # Real bug found by actually watching this build run, not caught
       # locally: examples/CMakeLists.txt's tricked_out example calls
@@ -52,61 +42,56 @@ jobs:
       # check the main renderer loop uses, which falls back gracefully
       # to pre-built .vo objects when openvcl/masp aren't found) - it
       # fails outright if dvp-as isn't already on PATH. setup-sdk
-      # installs dvp/bin but never adds it to PATH itself (ps2build's
-      # own toolchain resolution never needs PATH, so there was nothing
-      # to fix there) - this workflow builds via raw CMake/ninja instead,
-      # which does rely on PATH for a bare `COMMAND dvp-as`.
-      - name: Add dvp\bin to PATH
-        shell: pwsh
-        run: "'C:\\ps2dev-consumer\\dvp\\bin' >> $env:GITHUB_PATH"
+      # installs the dvp toolchain but never adds it to PATH itself
+      # (ps2build's own toolchain resolution never needs PATH) - this
+      # workflow builds via raw CMake/ninja instead, which does rely on
+      # PATH for a bare `COMMAND dvp-as`. Real path is
+      # toolchain/dvp/bin, not dvp/bin - see ps2dev.cmake's own history
+      # of getting this exact prefix wrong.
+      - name: Add dvp/bin to PATH
+        run: echo "/opt/ps2dev/toolchain/dvp/bin" >> "$GITHUB_PATH"
 
-      # ps2build update installs ps2dev.cmake itself, into
-      # C:\ps2dev-consumer\cmake\ - both CMakeLists.txt below already
-      # default CMAKE_TOOLCHAIN_FILE to $ENV{PS2DEV}/cmake/ps2dev.cmake,
-      # so setting PS2DEV is all this needs.
+      # ps2build update installs ps2dev.cmake itself - both
+      # CMakeLists.txt below already default CMAKE_TOOLCHAIN_FILE to
+      # $ENV{PS2DEV}/cmake/ps2dev.cmake, so setting PS2DEV is all this
+      # needs.
       - name: Build + install ps2stuff
-        shell: pwsh
+        env:
+          PS2DEV: /opt/ps2dev
         run: |
-          $env:PS2DEV = "C:\ps2dev-consumer"
-          cmake -S ps2stuff -B ps2stuff\build -G Ninja `
-            -DCMAKE_INSTALL_PREFIX=C:\ps2dev-consumer\packages\world\ps2stuff
-          cmake --build ps2stuff\build
-          cmake --install ps2stuff\build
+          cmake -S ps2stuff -B ps2stuff/build -G Ninja \
+            -DCMAKE_MAKE_PROGRAM=/opt/ps2dev/tools/ninja \
+            -DCMAKE_INSTALL_PREFIX=/opt/ps2dev/packages/world/ps2stuff
+          cmake --build ps2stuff/build
+          cmake --install ps2stuff/build
 
       # BUILD_EXAMPLES=OFF, matching release.yml: real bug found by
       # actually watching this build link, not guessed. Every VU1
       # renderer's microcode needs openvcl/masp (the VCL compiler) to
-      # build - neither ships in the published toolchain release (a
-      # real, separately known gap - see FEEDBACK.md), and this repo
-      # has no pre-built .vo fallback objects checked in either
-      # (vu1/*.vo is empty; only Sony's own reference .vsm sources
-      # exist, which still need dvp-as to assemble and only cover the
-      # SCE-VSM-bypass path, off by default). The library itself
+      # build - neither ships in the published toolchain release yet
+      # (a real, separately known gap), and this repo has no pre-built
+      # .vo fallback objects checked in either. The library itself
       # (libps2gl.a/libps2glut.a) builds fine either way - only linking
-      # an actual example against a real renderer fails
-      # ("undefined reference to vsmGeneralPVDiff_CodeStart"), since
-      # nothing ever produced that symbol. Revisit once openvcl/masp
-      # are real toolchain-release components.
+      # an actual example against a real renderer fails. Revisit once
+      # openvcl/masp are real toolchain-release components.
       - name: Configure with CMake
-        shell: pwsh
+        env:
+          PS2DEV: /opt/ps2dev
         run: |
-          $env:PS2DEV = "C:\ps2dev-consumer"
-          cmake -S . -B build -G Ninja `
-            -DCMAKE_INSTALL_PREFIX=C:\ps2dev-consumer\packages\world\ps2gl `
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_MAKE_PROGRAM=/opt/ps2dev/tools/ninja \
+            -DCMAKE_INSTALL_PREFIX=/opt/ps2dev/packages/world/ps2gl \
             -DBUILD_GLUT=ON -DBUILD_EXAMPLES=OFF
 
       - name: Build
-        shell: pwsh
         run: cmake --build build
 
       - name: Install libraries
-        shell: pwsh
         run: cmake --install build
 
       - name: Get short SHA
         id: slug
-        shell: pwsh
-        run: "'sha8=' + $env:GITHUB_SHA.Substring(0,8) >> $env:GITHUB_OUTPUT"
+        run: echo "sha8=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
 
       # The installed package directory (include/, lib/, package.yaml) -
       # same reasoning as ps2stuff's own build.yml: a real, complete
@@ -116,4 +101,4 @@ jobs:
         if: success()
         with:
           name: ps2gl-${{ steps.slug.outputs.sha8 }}
-          path: C:\ps2dev-consumer\packages\world\ps2gl
+          path: /opt/ps2dev/packages/world/ps2gl
