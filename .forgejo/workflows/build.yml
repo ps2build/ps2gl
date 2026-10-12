@@ -88,17 +88,3 @@ jobs:
 
       - name: Install libraries
         run: cmake --install build
-
-      - name: Get short SHA
-        id: slug
-        run: echo "sha8=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
-
-      # The installed package directory (include/, lib/, package.yaml) -
-      # same reasoning as ps2stuff's own build.yml: a real, complete
-      # package someone could drop into $PS2DEV/packages/world/, not
-      # just a bare .a.
-      - uses: actions/upload-artifact@v3
-        if: success()
-        with:
-          name: ps2gl-${{ steps.slug.outputs.sha8 }}
-          path: /opt/ps2dev/packages/world/ps2gl
