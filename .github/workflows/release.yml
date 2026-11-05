@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout ps2stuff
+        uses: actions/checkout@v4
+        with:
+          repository: ps2build/ps2stuff
+          path: ps2stuff
+
+      - uses: ps2build/setup-sdk@main
+        with:
+          ps2dev: /opt/ps2dev
+          components: toolchain,cmake,ninja,sdk-core
+
+      - name: Build and install ps2stuff
+        env:
+          PS2DEV: /opt/ps2dev
+        run: |
+          cmake -S ps2stuff -B ps2stuff/build -G Ninja \
+            -DCMAKE_MAKE_PROGRAM=/opt/ps2dev/tools/ninja \
+            -DCMAKE_INSTALL_PREFIX=/opt/ps2dev/packages/world/ps2stuff
+          cmake --build ps2stuff/build
+          cmake --install ps2stuff/build
+
+      - name: Add dvp to PATH
+        run: echo "/opt/ps2dev/toolchain/dvp/bin" >> "$GITHUB_PATH"
+
+      - name: Configure
+        env:
+          PS2DEV: /opt/ps2dev
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_MAKE_PROGRAM=/opt/ps2dev/tools/ninja \
+            -DCMAKE_INSTALL_PREFIX=/opt/ps2dev/packages/world/ps2gl \
+            -DBUILD_GLUT=ON \
+            -DBUILD_EXAMPLES=OFF
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Install
+        run: cmake --install build
+
+      - name: Bundle license
+        run: |
+          cp COPYING /opt/ps2dev/packages/world/ps2gl/COPYING
+
+      - name: Package
+        run: (cd /opt/ps2dev/packages/world/ps2gl && zip -qr "$GITHUB_WORKSPACE/ps2gl-${GITHUB_REF_NAME}.zip" .)
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" ps2gl-*.zip
